@@ -215,6 +215,102 @@ index.ts
 通过 url.parse 的处理，查询参数就不会影响到 index.html 的显示（浏览器输入`http://localhost:8888/index.html?q=1`,正常显示 index.html 页面）
 
 ## 自动匹配任意文件
+index.ts
+```
+server.on('request', (request: IncomingMessage, response: ServerResponse) => {
+    response.setHeader('Content-Type', 'text/html; charset=utf-8')
+    const {method, url:path, headers} = request
+    const {pathname, search} = url.parse(path)
+    const filename = pathname.substr(1)
+    fs.readFile(p.resolve(publicDir, filename), (error, data) => {
+        if (error) {
+            response.statusCode = 404
+            response.end('你要的文件不存在')
+        } else {
+            response.end(data.toString())
+        }
+    })
+})
+```
+测试,新建文件
+```
+├── public
+│   ├── aa
+│   │   └── xx.html
+```
+浏览器输入`http://localhost:8888/aa/xx.html`,页面显示 xx.html 的内容
+
+## 处理不存在的文件
+
+```
+├── public
+│   ├── 404.html
+│   ├── aa
+│   │   └── xx.html
+│   ├── images
+│   │   └── 404.png
+```
+index.ts
+```
+    fs.readFile(p.resolve(publicDir, filename), (error, data) => {
+        if (error) {
+            //console.log(error)
+            if(error.errno === -2) { //表示文件不存在
+                response.statusCode = 404
+                fs.readFile(p.resolve(publicDir, '404.html'), (error, data) => {
+                    response.end(data)
+                })
+
+            } else {
+                response.statusCode = 500
+                response.end('服务器繁忙，请稍后再试')
+            }
+        } else {
+            response.end(data)
+        }
+    })
+```
+测试，输入`http://localhost:8888/xxxxx.html`,显示定义好的 404 页面
+
+**这里有个 bug**,输入`http://localhost:8888`，显示 服务器繁忙，请稍后再试,原因是，当输入此地址时，pathname = '/' ，filename = '',所以没有走首页的逻辑
+
+这样处理
+```
+   let filename = pathname.substr(1)
+    if (filename === '') {
+        filename = 'index.html'
+    }
+```
+经过处理，页面会显示 index.html
+
+继续测试，输入`http://localhost:8888/aa`，显示服务器繁忙，应该显示 404 错误，**又是一个 bug**，如何解决呢
+
+1. console.log(error)
+   ```
+   { [Error: EISDIR: illegal operation on a directory, read] errno: -21, code: 'EISDIR', syscall: 'read' }
+   ```
+   非法操作目录....
+2. 对错误进行处理
+   ```
+   else if (error.errno === -21) { //表示非法操作文件夹
+                   response.statusCode = 403
+                   response.end('无权查看目录内容')
+               }
+   ```
+继续测试，输入`http://localhost:8888/aa`，显示 无权查看目录内容 页面
+
+输入`http://localhost:8888/aa/xx.html`，显示 aa 页面
+
+输入`http://localhost:8888/aa/xx2.html`，显示 404 页面，但又出现bug，404图片没有显示，如何解决呢
+
+**bug 排查**：404.html 中的图片引用`<img src="images/404.png" alt="">`使用的是相对路径，而此时地址是`aa/xx2.html`，所以此时图片请求的路径应为`http://localhost:8888/aa/images/404.png`
+所以此时 404.html 中应该这样引用``,同时 public 文件设置为根目录（右键 - Mark Directory as - Resource Root）,
+再刷新，正常显示 404 页面
+
+输入`http://localhost:8888/aa/bbb/xxxc.html`，不管路径有多深，都会正常显示 404 页面
+
+
+
 
 
 
