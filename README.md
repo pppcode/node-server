@@ -200,6 +200,21 @@ server.on('request', (request: IncomingMessage, response: ServerResponse) => {
 测试，浏览器中输入`localhost:8888/index.html`，显示模拟的网页内容
 
 ## 处理请求参数
+index.ts
+```
+    const {pathname, search} = url.parse(path)
+    switch (pathname) {
+        case '/index.html':
+            response.setHeader('Content-Type', 'text/html; charset=utf-8')
+            fs.readFile(p.resolve(publicDir, 'index.html'), (error, data) => {
+                if (error) throw error
+                response.end(data.toString())
+            })
+            break
+```
+通过 url.parse 的处理，查询参数就不会影响到 index.html 的显示（浏览器输入`http://localhost:8888/index.html?q=1`,正常显示 index.html 页面）
+
+## 自动匹配任意文件
 
 
 
