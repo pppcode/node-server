@@ -23,7 +23,7 @@ server.listen(8888)
 ```
 测试，运行`ts-node-dev index.ts`,请求8080端口，新开 terminal 运行`curl http://localhost:8888`,terminal1 输出 有人请求了，terminal2 输出 hi
 
-## 请求不同路径，响应不同的内容
+## 基本用法
 
 index.ts
 ```
@@ -117,6 +117,97 @@ POST
 body
 name=zhangsan
 ```
+Response 的用法
+
+具有 getHeader/setHeader/end/write等方法，具有 statusCode 属性，可读可写
+```
+        response.statusCode = 404
+        response.setHeader('zhangsan', `I'm 14 year old`)
+        response.write('1\n')
+        response.write('2\n')
+        response.end()
+```
+
+## 根据 url 返回不同的文件
+
+首先模拟网页内容，运行在浏览器中的
+```
+├── public
+│   ├── index.html
+│   ├── main.js
+│   └── style.css
+```
+idnex.html
+```
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>网页1</title>
+</head>
+<body>
+  <h1>这是一个 index.html</h1>
+</body>
+</html>
+```
+style.css
+```
+h1 {
+    color: red;
+}
+```
+main.js
+```
+document.querySelector('h1').onclick = ()=> {
+  alert('我是 JS')
+}
+```
+index.ts
+```
+import * as fs from "fs";
+import * as p from "path"
+
+server.on('request', (request: IncomingMessage, response: ServerResponse) => {
+    const {method, url, headers} = request
+    switch (url) {
+        case '/index.html':
+            response.setHeader('Content-Type', 'text/html; charset=utf-8')
+            fs.readFile(p.resolve(publicDir, 'index.html'), (error, data) => {
+                if (error) throw error
+                response.end(data.toString())
+            })
+            break
+        case '/style.css':
+            response.setHeader('Content-Type', 'text/css; charset=utf-8')
+            fs.readFile(p.resolve(publicDir, 'style.css'), (error, data) => {
+                if (error) throw error
+                response.end(data.toString())
+            })
+            break
+        case '/main.js':
+            response.setHeader('Content-Type', 'text/javascript; charset=utf-8')
+            fs.readFile(p.resolve(publicDir, 'main.js'), (error, data) => {
+                if (error) throw error
+                response.end(data.toString())
+            })
+            break
+    }
+})
+```
+测试，浏览器中输入`localhost:8888/index.html`，显示模拟的网页内容
+
+## 处理请求参数
+
+
+
+
+
+
+
+
 
 
 
